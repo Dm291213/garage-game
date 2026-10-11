@@ -1,0 +1,1697 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Гаражный нумеролог · Онлайн</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: radial-gradient(circle at 50% 0%, #1b2735 0%, #090a0f 100%);
+    color: #e8e8e8;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+  }
+  .game { width: 100%; max-width: 820px; }
+
+  .error-screen {
+    position: fixed; inset: 0;
+    background: #1a0a0a; color: #ff8a8a;
+    padding: 30px; z-index: 9999;
+    display: none; overflow: auto;
+    font-family: monospace; font-size: 13px; line-height: 1.6;
+  }
+  .error-screen.show { display: block; }
+  .error-screen h2 { color: #ff5555; margin-bottom: 12px; font-size: 18px; }
+  .error-screen .info { background: rgba(0,0,0,0.4); padding: 12px; border-radius: 8px; margin-bottom: 12px; white-space: pre-wrap; word-break: break-word; }
+
+  h1 {
+    text-align: center; font-size: 26px; margin-bottom: 4px;
+    background: linear-gradient(90deg, #f5d76e, #f8b500, #f5d76e);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    cursor: default; user-select: none;
+  }
+  .subtitle { text-align: center; color: #8a94a6; font-size: 13px; margin-bottom: 12px; }
+
+  /* Онлайн-статус */
+  .online-bar {
+    display: flex; justify-content: center; align-items: center;
+    gap: 10px; margin-bottom: 12px;
+    font-size: 12px; color: #8a94a6;
+  }
+  .online-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #6b7280; display: inline-block;
+  }
+  .online-dot.connected { background: #6ee7a8; box-shadow: 0 0 10px #6ee7a8; }
+  .online-dot.connecting { background: #f5d76e; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: 0.3; } }
+  .online-bar .room-code {
+    background: rgba(168,85,247,0.15);
+    border: 1px solid rgba(168,85,247,0.4);
+    padding: 2px 10px; border-radius: 12px;
+    color: #c084fc; font-weight: 700;
+  }
+
+  .events-banner { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; justify-content: center; }
+  .event-chip {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 20px;
+    font-size: 12px; font-weight: 700;
+  }
+  .event-chip.candy  { background: linear-gradient(135deg,#ff6bcb,#ff8fdb); color:#3a0024; box-shadow: 0 0 16px rgba(255,107,203,0.6); }
+  .event-chip.lucky  { background: linear-gradient(135deg,#6ee7a8,#34d399); color:#052e1b; box-shadow: 0 0 16px rgba(110,231,168,0.6); }
+  .event-chip.money  { background: linear-gradient(135deg,#f5d76e,#f8b500); color:#1b2735; box-shadow: 0 0 16px rgba(245,215,110,0.6); }
+  .event-chip.mega   { background: linear-gradient(135deg,#a855f7,#ec4899); color:#fff;    box-shadow: 0 0 16px rgba(168,85,247,0.7); }
+  .event-chip .timer { font-weight: 400; opacity: 0.75; }
+
+  .welcome-overlay {
+    position: fixed; inset: 0;
+    background: rgba(9, 10, 15, 0.85);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000;
+  }
+  .welcome-overlay.hide { display: none; }
+  .welcome-card {
+    background: linear-gradient(160deg, rgba(30,40,55,0.95), rgba(15,20,30,0.98));
+    border: 1px solid rgba(245,215,110,0.4);
+    border-radius: 20px; padding: 36px 40px;
+    max-width: 480px; text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  }
+  .welcome-card .icon { font-size: 52px; margin-bottom: 10px; }
+  .welcome-card h2 { font-size: 24px; color: #f5d76e; margin-bottom: 10px; }
+  .welcome-card p { color: #b8c2cf; font-size: 14px; line-height: 1.6; margin-bottom: 8px; }
+  .welcome-card .small { color: #7d879a; font-size: 12px; margin-top: 12px; margin-bottom: 20px; }
+  .welcome-card .bonus {
+    display: inline-block; font-size: 12px; color: #f5d76e;
+    background: rgba(245,215,110,0.15);
+    border: 1px solid rgba(245,215,110,0.4);
+    padding: 6px 14px; border-radius: 8px; margin: 6px 0;
+    font-weight: 700;
+  }
+  .welcome-card .field { margin-bottom: 12px; text-align: left; }
+  .welcome-card .field label { display: block; font-size: 11px; color: #8a94a6; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
+  .welcome-card input {
+    width: 100%; padding: 11px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(0,0,0,0.4);
+    color: #e8e8e8; font-size: 14px; outline: none;
+  }
+  .welcome-card input:focus { border-color: #f5d76e; }
+  .welcome-card .btn {
+    width: 100%;
+    padding: 12px; border-radius: 12px; border: none;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+    background: linear-gradient(135deg, #f5d76e, #f8b500);
+    color: #1b2735; margin-top: 6px;
+  }
+  .welcome-card .btn:hover { filter: brightness(1.1); }
+
+  /* Модалка пароля админа */
+  .admin-pass-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 2500; padding: 20px;
+  }
+  .admin-pass-overlay.show { display: flex; }
+  .admin-pass-card {
+    background: linear-gradient(160deg, rgba(30,20,50,0.98), rgba(15,10,30,0.99));
+    border: 2px solid rgba(168,85,247,0.6);
+    border-radius: 18px;
+    padding: 28px 30px;
+    max-width: 380px; width: 100%;
+    text-align: center;
+  }
+  .admin-pass-card .lock-icon { font-size: 40px; margin-bottom: 8px; }
+  .admin-pass-card h3 { color: #c084fc; font-size: 18px; margin-bottom: 14px; }
+  .admin-pass-card input {
+    width: 100%; padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(168,85,247,0.4);
+    background: rgba(0,0,0,0.5);
+    color: #e8e8e8; font-size: 14px; outline: none;
+    text-align: center; letter-spacing: 2px;
+    margin-bottom: 12px;
+  }
+  .admin-pass-card input:focus { border-color: #a855f7; }
+  .admin-pass-card .error { color: #ff6b6b; font-size: 12px; min-height: 16px; margin-bottom: 8px; }
+  .admin-pass-card .actions { display: flex; gap: 8px; }
+  .admin-pass-card button {
+    flex: 1; padding: 10px; border-radius: 10px;
+    border: none; cursor: pointer;
+    font-size: 13px; font-weight: 700;
+  }
+  .admin-pass-card .btn-cancel {
+    background: rgba(255,255,255,0.1); color: #cdd5e0;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  .admin-pass-card .btn-ok {
+    background: linear-gradient(135deg, #a855f7, #ec4899); color: #fff;
+  }
+
+  .stats { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .stat {
+    flex: 1; min-width: 120px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 10px; text-align: center;
+  }
+  .stat .label { font-size: 10px; color: #8a94a6; text-transform: uppercase; letter-spacing: 1px; }
+  .stat .value { font-size: 18px; font-weight: 700; color: #f5d76e; margin-top: 3px; }
+  .stat .value.money { color: #6ee7a8; }
+
+  .region-select { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .region-btn {
+    flex: 1; min-width: 110px; padding: 9px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.04);
+    color: #cdd5e0; cursor: pointer; font-size: 12px;
+    transition: all .2s; text-align: center;
+  }
+  .region-btn:hover { background: rgba(255,255,255,0.1); }
+  .region-btn.active {
+    background: linear-gradient(135deg, #f5d76e, #f8b500);
+    color: #1b2735; font-weight: 700; border-color: transparent;
+  }
+  .region-btn .flag { font-size: 18px; display: block; margin-bottom: 1px; }
+
+  .generator {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px; padding: 22px; text-align: center; margin-bottom: 16px;
+  }
+  .plate-wrap { display: inline-block; margin-bottom: 10px; }
+  .plate {
+    display: flex; background: #fff;
+    border: 3px solid #111; border-radius: 6px;
+    padding: 6px 0;
+    font-family: 'Arial Narrow', 'Roboto Condensed', 'Segoe UI', sans-serif;
+    font-weight: 900; color: #111;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5), inset 0 -2px 0 rgba(0,0,0,0.15);
+    transition: all .3s; user-select: none; min-width: 400px;
+  }
+  .plate-main {
+    display: flex; align-items: center;
+    padding: 0 14px; border-right: 2px solid #111;
+    flex: 1; justify-content: center;
+  }
+  .plate-region {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 0 10px; min-width: 78px;
+  }
+  .plate-region .code { font-size: 26px; line-height: 1; font-weight: 900; }
+  .plate-region .country { font-size: 11px; font-weight: 700; letter-spacing: 1px; margin-top: 1px; }
+  .plate-region .flag { font-size: 16px; line-height: 1; margin-top: 1px; }
+  .plate .l { font-size: 32px; line-height: 1; }
+  .plate .d { font-size: 36px; line-height: 1; letter-spacing: 1px; }
+  .plate .gap { width: 6px; }
+
+  .plate.common    { border-color: #444; box-shadow: 0 0 0 2px rgba(255,255,255,0.08), 0 8px 24px rgba(0,0,0,0.5); }
+  .plate.rare      { border-color: #3b82f6; box-shadow: 0 0 24px rgba(59,130,246,0.7), 0 8px 24px rgba(0,0,0,0.5); }
+  .plate.epic      { border-color: #a855f7; box-shadow: 0 0 28px rgba(168,85,247,0.8), 0 8px 24px rgba(0,0,0,0.5); }
+  .plate.mythic    { border-color: #f97316; box-shadow: 0 0 32px rgba(249,115,22,0.9), 0 8px 24px rgba(0,0,0,0.5); }
+  .plate.legendary { border-color: #ef4444; box-shadow: 0 0 40px rgba(239,68,68,1), 0 8px 24px rgba(0,0,0,0.5); }
+  .plate.candy {
+    border-color: #ff6bcb;
+    background: linear-gradient(135deg, #fff 0%, #ffe8f5 50%, #fff 100%);
+    box-shadow: 0 0 30px rgba(255,107,203,0.9), 0 8px 24px rgba(0,0,0,0.5);
+  }
+  .plate.candy .l, .plate.candy .d { color: #d6008c; }
+  .plate.expensive { animation: expensivePulse 1s infinite alternate; border-color: #ffd700; }
+  @keyframes expensivePulse {
+    from { box-shadow: 0 0 30px rgba(255,215,0,0.9), 0 8px 24px rgba(0,0,0,0.5); }
+    to   { box-shadow: 0 0 60px rgba(255,215,0,1), 0 8px 24px rgba(0,0,0,0.5); }
+  }
+
+  .plate-info { font-size: 13px; color: #8a94a6; margin-bottom: 4px; min-height: 18px; }
+  .plate-value { font-size: 22px; font-weight: 700; color: #6ee7a8; margin-bottom: 14px; }
+  .plate-value .mult { font-size: 13px; color: #f5d76e; }
+  .plate-value.expensive-value { color: #ffd700; }
+  .plate-value .rarity-tag {
+    display: inline-block; font-size: 11px; padding: 2px 8px;
+    border-radius: 6px; margin-left: 6px; vertical-align: middle;
+    font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .rarity-tag.common    { background:#444; color:#ddd; }
+  .rarity-tag.rare      { background:#3b82f6; color:#fff; }
+  .rarity-tag.epic      { background:#a855f7; color:#fff; }
+  .rarity-tag.mythic    { background:#f97316; color:#fff; }
+  .rarity-tag.legendary { background:#ef4444; color:#fff; }
+  .rarity-tag.candy     { background:#ff6bcb; color:#fff; }
+
+  .buttons { display: flex; gap: 10px; margin-bottom: 12px; }
+  .btn {
+    flex: 1; padding: 13px; border-radius: 12px; border: none;
+    font-size: 14px; font-weight: 700; cursor: pointer; transition: all .2s;
+  }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-generate { background: linear-gradient(135deg, #6ee7a8, #34d399); color: #052e1b; }
+  .btn-sell { background: linear-gradient(135deg, #f5d76e, #f8b500); color: #1b2735; }
+
+  .case-select {
+    background: rgba(0,0,0,0.25);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px; padding: 12px 14px;
+  }
+  .case-select .case-title {
+    font-size: 11px; color: #8a94a6;
+    text-transform: uppercase; letter-spacing: 1px;
+    text-align: center; margin-bottom: 10px;
+  }
+  .case-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 8px;
+  }
+  .case-item {
+    background: rgba(255,255,255,0.04);
+    border: 2px solid rgba(255,255,255,0.15);
+    border-radius: 10px; padding: 10px 8px;
+    text-align: center; cursor: pointer; transition: all .2s;
+  }
+  .case-item.disabled { opacity: 0.4; cursor: not-allowed; }
+  .case-item.active { border-color: #f5d76e; box-shadow: 0 0 16px rgba(245,215,110,0.5); }
+  .case-item .case-icon { font-size: 22px; margin-bottom: 4px; }
+  .case-item .case-name { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+  .case-item .case-price { font-size: 10px; color: #f5d76e; font-weight: 700; }
+  .case-item .case-locked { font-size: 9px; color: #ff6b6b; margin-top: 2px; font-weight: 700; }
+  .case-item.c-common    { border-color: #555; } .case-item.c-common    .case-name { color: #ccc; }
+  .case-item.c-rare      { border-color: #3b82f6; } .case-item.c-rare      .case-name { color: #60a5fa; }
+  .case-item.c-epic      { border-color: #a855f7; } .case-item.c-epic      .case-name { color: #c084fc; }
+  .case-item.c-mythic    { border-color: #f97316; } .case-item.c-mythic    .case-name { color: #fb923c; }
+  .case-item.c-legendary { border-color: #ef4444; } .case-item.c-legendary .case-name { color: #ff5555; }
+
+  .log {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 10px 14px;
+    max-height: 150px; overflow-y: auto;
+    font-size: 12px; line-height: 1.7;
+  }
+  .log-item { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 2px 0; }
+  .log-item:last-child { border-bottom: none; }
+  .log-item .green { color: #6ee7a8; }
+  .log-item .gold { color: #f5d76e; }
+  .log-item .red { color: #ff6b6b; }
+  .log-item .purple { color: #c084fc; }
+  .log-item .orange { color: #fb923c; }
+  .log-item .pink { color: #ff8fdb; }
+  .log-item .blue { color: #60a5fa; }
+
+  .reset-btn {
+    display: block; margin: 20px auto 0;
+    padding: 8px 16px; border-radius: 8px;
+    border: 1px solid rgba(255,107,107,0.4);
+    background: transparent; color: #ff6b6b;
+    font-size: 11px; cursor: pointer;
+  }
+
+  .confirm-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: none; align-items: center; justify-content: center;
+    z-index: 1800; padding: 20px;
+  }
+  .confirm-overlay.show { display: flex; }
+  .confirm-card {
+    background: linear-gradient(160deg, rgba(40,30,15,0.98), rgba(20,15,8,0.99));
+    border: 2px solid rgba(255,215,0,0.6);
+    border-radius: 18px; padding: 28px 30px;
+    max-width: 460px; width: 100%; text-align: center;
+  }
+  .confirm-card .warn-icon { font-size: 44px; margin-bottom: 8px; }
+  .confirm-card h3 { color: #ffd700; font-size: 19px; margin-bottom: 10px; }
+  .confirm-card .warn-text { color: #d4c88a; font-size: 13px; line-height: 1.6; margin-bottom: 8px; }
+  .confirm-card .warn-value { font-size: 22px; font-weight: 900; color: #ffd700; margin: 10px 0 6px; }
+  .confirm-card .warn-plate {
+    font-family: 'Arial Narrow', monospace;
+    font-weight: 900; color: #fff;
+    background: #222; border: 2px solid #ffd700;
+    padding: 4px 12px; border-radius: 6px;
+    display: inline-block; margin-bottom: 12px;
+    font-size: 16px; letter-spacing: 1px;
+  }
+  .confirm-card .confirm-actions { display: flex; gap: 10px; margin-top: 16px; }
+  .confirm-card .confirm-actions button {
+    flex: 1; padding: 12px; border-radius: 10px;
+    border: none; cursor: pointer;
+    font-size: 13px; font-weight: 700;
+  }
+  .confirm-card .btn-cancel { background: rgba(255,255,255,0.1); color: #cdd5e0; border: 1px solid rgba(255,255,255,0.2); }
+  .confirm-card .btn-confirm { background: linear-gradient(135deg, #ff6b6b, #dc2626); color: #fff; }
+
+  .admin-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: none; align-items: center; justify-content: center;
+    z-index: 2000; padding: 20px;
+  }
+  .admin-overlay.show { display: flex; }
+  .admin-panel {
+    background: linear-gradient(160deg, rgba(20,15,35,0.98), rgba(10,8,20,0.99));
+    border: 1px solid rgba(168,85,247,0.5);
+    border-radius: 18px; padding: 24px 26px;
+    max-width: 620px; width: 100%;
+    max-height: 90vh; overflow-y: auto;
+  }
+  .admin-panel h2 { text-align: center; color: #c084fc; font-size: 20px; margin-bottom: 4px; }
+  .admin-panel .admin-hint { text-align: center; color: #7d879a; font-size: 11px; margin-bottom: 18px; }
+  .admin-section-title { font-size: 11px; color: #8a94a6; text-transform: uppercase; letter-spacing: 1px; margin: 14px 0 8px; }
+  .admin-event {
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; gap: 10px;
+  }
+  .admin-event .info { flex: 1; min-width: 0; }
+  .admin-event .info .name { font-size: 13px; font-weight: 700; }
+  .admin-event .info .desc { font-size: 11px; color: #8a94a6; margin-top: 2px; }
+  .admin-event.candy .info .name { color: #ff8fdb; }
+  .admin-event.lucky .info .name { color: #6ee7a8; }
+  .admin-event.mega  .info .name { color: #c084fc; }
+  .admin-event .controls { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
+  .admin-event select {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px; color: #e8e8e8;
+    font-size: 11px; padding: 6px 8px;
+    cursor: pointer; outline: none;
+  }
+  .admin-btn { padding: 6px 12px; border-radius: 8px; border: none; cursor: pointer; font-size: 11px; font-weight: 700; }
+  .admin-btn.start { background: linear-gradient(135deg, #a855f7, #ec4899); color: #fff; }
+  .admin-btn.stop { background: rgba(255,107,107,0.2); color: #ff6b6b; border: 1px solid rgba(255,107,107,0.4); }
+  .admin-close {
+    display: block; margin: 16px auto 0;
+    padding: 10px 24px; border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: transparent; color: #cdd5e0;
+    font-size: 12px; cursor: pointer;
+  }
+  .admin-give { background: rgba(245,215,110,0.08); border: 1px solid rgba(245,215,110,0.3); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; }
+  .admin-give .row { display: flex; gap: 8px; align-items: center; }
+  .admin-give input {
+    flex: 1; padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(0,0,0,0.4);
+    color: #e8e8e8; font-size: 12px; outline: none;
+  }
+  .admin-give button {
+    padding: 8px 14px; border-radius: 8px;
+    border: none; cursor: pointer;
+    background: linear-gradient(135deg, #f5d76e, #f8b500);
+    color: #1b2735; font-weight: 700; font-size: 12px;
+  }
+  .admin-broadcast-block { background: rgba(168,85,247,0.08); border: 1px solid rgba(168,85,247,0.35); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; }
+  .admin-broadcast-block input[type="text"] {
+    width: 100%; padding: 9px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(0,0,0,0.4);
+    color: #e8e8e8; font-size: 13px; outline: none;
+    margin-bottom: 8px;
+  }
+  .admin-broadcast-block .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .admin-broadcast-block select {
+    flex: 1; min-width: 110px;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px; color: #e8e8e8;
+    font-size: 12px; padding: 8px 10px;
+    outline: none; cursor: pointer;
+  }
+  .admin-broadcast-block .broadcast-btn {
+    flex: 1; min-width: 120px;
+    padding: 9px 16px; border-radius: 8px;
+    border: none; cursor: pointer;
+    background: linear-gradient(135deg, #a855f7, #ec4899);
+    color: #fff; font-weight: 700; font-size: 12px;
+  }
+  .admin-slider-block { background: rgba(110,231,168,0.08); border: 1px solid rgba(110,231,168,0.35); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; }
+  .admin-slider-block .slider-label { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 700; color: #6ee7a8; margin-bottom: 8px; }
+  .admin-slider-block .slider-label .val { background: rgba(0,0,0,0.4); padding: 2px 10px; border-radius: 6px; font-size: 13px; color: #f5d76e; }
+  .admin-slider-block input[type="range"] { width: 100%; -webkit-appearance: none; height: 8px; background: rgba(0,0,0,0.5); border-radius: 4px; outline: none; }
+  .admin-slider-block input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: linear-gradient(135deg, #6ee7a8, #34d399); cursor: pointer; }
+  .mult-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .mult-btn {
+    flex: 1; min-width: 70px;
+    padding: 10px 8px; border-radius: 10px;
+    border: 2px solid rgba(245,215,110,0.4);
+    background: rgba(0,0,0,0.3);
+    color: #f5d76e;
+    font-size: 14px; font-weight: 900;
+    cursor: pointer;
+  }
+  .mult-btn.active {
+    background: linear-gradient(135deg, #f5d76e, #f8b500);
+    color: #1b2735; border-color: #f5d76e;
+  }
+
+  .admin-broadcast {
+    position: fixed; top: 20px; left: 50%;
+    transform: translateX(-50%) translateY(-120%);
+    z-index: 1500; max-width: 90%;
+    padding: 14px 28px; border-radius: 14px;
+    font-size: 16px; font-weight: 700; text-align: center;
+    border: 2px solid rgba(168,85,247,0.7);
+    background: linear-gradient(160deg, rgba(40,20,60,0.98), rgba(20,10,35,0.99));
+    color: #fff;
+    transition: transform .5s;
+  }
+  .admin-broadcast.show { transform: translateX(-50%) translateY(0); }
+  .admin-broadcast .badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #a855f7, #ec4899);
+    color: #fff; font-size: 10px; font-weight: 900;
+    padding: 3px 10px; border-radius: 20px;
+    letter-spacing: 1.5px; margin-right: 10px;
+  }
+  .admin-broadcast.color-gold { border-color: rgba(245,215,110,0.8); background: linear-gradient(160deg, rgba(60,45,15,0.98), rgba(30,22,8,0.99)); }
+  .admin-broadcast.color-green { border-color: rgba(110,231,168,0.8); background: linear-gradient(160deg, rgba(15,50,35,0.98), rgba(8,25,18,0.99)); }
+  .admin-broadcast.color-red { border-color: rgba(239,68,68,0.8); background: linear-gradient(160deg, rgba(60,20,20,0.98), rgba(30,10,10,0.99)); }
+  .admin-broadcast.color-blue { border-color: rgba(59,130,246,0.8); background: linear-gradient(160deg, rgba(15,30,60,0.98), rgba(8,15,30,0.99)); }
+</style>
+</head>
+<body>
+
+<div class="error-screen" id="errorScreen">
+  <h2>⚠️ Ошибка при запуске игры</h2>
+  <div class="info" id="errorInfo"></div>
+  <div>Скопируй текст выше и отправь разработчику.</div>
+</div>
+
+<div class="admin-broadcast" id="adminBroadcast">
+  <span class="badge">АДМИН</span>
+  <span class="text" id="adminBroadcastText"></span>
+</div>
+
+<!-- ЭКРАН ВХОДА В КОМНАТУ -->
+<div class="welcome-overlay" id="welcomeOverlay">
+  <div class="welcome-card">
+    <div class="icon">🚗</div>
+    <h2>Гаражный нумеролог · Онлайн</h2>
+    <p>Играйте с другом в одной комнате. Прогресс — свой у каждого, ивенты — общие.</p>
+    <div class="bonus">🎁 Стартовый капитал: 75 000 ₽</div>
+
+    <div class="field">
+      <label>Имя игрока</label>
+      <input type="text" id="playerName" placeholder="Введите имя" maxlength="16">
+    </div>
+    <div class="field">
+      <label>Код комнаты (одинаковый у вас и друга)</label>
+      <input type="text" id="roomCode" placeholder="Например: garage2025" maxlength="24">
+    </div>
+
+    <button class="btn" id="welcomeStart">Войти в игру</button>
+    <p class="small">5 редкостей · цены от 1 000 ₽ до 1 000 000 000 ₽</p>
+  </div>
+</div>
+
+<!-- МОДАЛКА ПАРОЛЯ АДМИНА -->
+<div class="admin-pass-overlay" id="adminPassOverlay">
+  <div class="admin-pass-card">
+    <div class="lock-icon">🔒</div>
+    <h3>Введите пароль администратора</h3>
+    <input type="password" id="adminPassInput" placeholder="••••••••" autocomplete="off">
+    <div class="error" id="adminPassError"></div>
+    <div class="actions">
+      <button class="btn-cancel" id="adminPassCancel">Отмена</button>
+      <button class="btn-ok" id="adminPassOk">Войти</button>
+    </div>
+  </div>
+</div>
+
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-card">
+    <div class="warn-icon">⚠️</div>
+    <h3>У вас дорогой номер!</h3>
+    <div class="warn-text">Текущий номер стоит больше 100 миллионов рублей. Вы уверены, что хотите прокрутить его, не продав?</div>
+    <div class="warn-plate" id="confirmPlate">—</div>
+    <div class="warn-value" id="confirmValue">—</div>
+    <div class="confirm-actions">
+      <button class="btn-cancel" id="confirmCancel">Отмена (продать)</button>
+      <button class="btn-confirm" id="confirmGo">Да, прокрутить</button>
+    </div>
+  </div>
+</div>
+
+<div class="admin-overlay" id="adminOverlay">
+  <div class="admin-panel">
+    <h2>🛠 Админ-панель</h2>
+    <p class="admin-hint">Ctrl+Shift+A — открыть/закрыть · пароль обязателен</p>
+
+    <div class="admin-section-title">Вывести надпись (видят все в комнате)</div>
+    <div class="admin-broadcast-block">
+      <input type="text" id="broadcastText" placeholder="Введите текст сообщения..." maxlength="120">
+      <div class="row">
+        <select id="broadcastColor">
+          <option value="purple">🟣 Фиолетовый</option>
+          <option value="gold">🟡 Золотой</option>
+          <option value="green">🟢 Зелёный</option>
+          <option value="red">🔴 Красный</option>
+          <option value="blue">🔵 Синий</option>
+        </select>
+        <select id="broadcastDur">
+          <option value="5">5 сек</option>
+          <option value="10" selected>10 сек</option>
+          <option value="20">20 сек</option>
+          <option value="60">1 мин</option>
+          <option value="0">Пока не закрою</option>
+        </select>
+        <button class="broadcast-btn" id="broadcastBtn">📢 Вывести</button>
+      </div>
+    </div>
+
+    <div class="admin-section-title">Уровень лаки-ивента (общий)</div>
+    <div class="admin-slider-block">
+      <div class="slider-label">
+        <span>🍀 Сила удачи</span>
+        <span class="val" id="luckLevelVal">0 / 10</span>
+      </div>
+      <input type="range" id="luckLevelSlider" min="0" max="10" value="0" step="1">
+    </div>
+
+    <div class="admin-section-title">Множитель кэша (общий)</div>
+    <div class="mult-btns" id="multBtns">
+      <button class="mult-btn" data-mult="1">x1</button>
+      <button class="mult-btn" data-mult="2">x2</button>
+      <button class="mult-btn" data-mult="3">x3</button>
+      <button class="mult-btn" data-mult="4">x4</button>
+      <button class="mult-btn" data-mult="5">x5</button>
+    </div>
+
+    <div class="admin-section-title">Ивенты (запускаются у всех в комнате)</div>
+
+    <div class="admin-event candy">
+      <div class="info">
+        <div class="name">🍬 Конфетный ивент</div>
+        <div class="desc">Шанс выпадения конфетного номера</div>
+      </div>
+      <div class="controls">
+        <select id="candyDur">
+          <option value="60">1 мин</option>
+          <option value="300" selected>5 мин</option>
+          <option value="600">10 мин</option>
+          <option value="1800">30 мин</option>
+        </select>
+        <button class="admin-btn start" data-event="candy">Старт</button>
+        <button class="admin-btn stop" data-event="candy">Стоп</button>
+      </div>
+    </div>
+
+    <div class="admin-event lucky">
+      <div class="info">
+        <div class="name">🍀 Лаки ивент</div>
+        <div class="desc">Повышает шанс лучших номеров</div>
+      </div>
+      <div class="controls">
+        <select id="luckyDur">
+          <option value="60">1 мин</option>
+          <option value="300" selected>5 мин</option>
+          <option value="600">10 мин</option>
+          <option value="1800">30 мин</option>
+        </select>
+        <button class="admin-btn start" data-event="lucky">Старт</button>
+        <button class="admin-btn stop" data-event="lucky">Стоп</button>
+      </div>
+    </div>
+
+    <div class="admin-event mega">
+      <div class="info">
+        <div class="name">🎰 Мега-дроп</div>
+        <div class="desc">Сильно повышает шансы редких</div>
+      </div>
+      <div class="controls">
+        <select id="megaDur">
+          <option value="60">1 мин</option>
+          <option value="300" selected>5 мин</option>
+          <option value="600">10 мин</option>
+          <option value="1800">30 мин</option>
+        </select>
+        <button class="admin-btn start" data-event="mega">Старт</button>
+        <button class="admin-btn stop" data-event="mega">Стоп</button>
+      </div>
+    </div>
+
+    <div class="admin-section-title">Выдать деньги себе</div>
+    <div class="admin-give">
+      <div class="row">
+        <input type="number" id="giveAmount" placeholder="Сумма ₽" value="1000000">
+        <button id="giveBtn">Выдать</button>
+      </div>
+    </div>
+
+    <div class="admin-section-title">Быстрые действия</div>
+    <div class="admin-event">
+      <div class="info">
+        <div class="name">🧹 Очистить лог</div>
+        <div class="desc">Убрать все записи из журнала</div>
+      </div>
+      <div class="controls">
+        <button class="admin-btn stop" id="clearLogBtn">Очистить</button>
+      </div>
+    </div>
+
+    <button class="admin-close" id="adminClose">Закрыть</button>
+  </div>
+</div>
+
+<div class="game" id="gameScreen" style="display:none;">
+  <h1 id="gameTitle">🚗 ГАРАЖНЫЙ НУМЕРОЛОГ</h1>
+  <p class="subtitle">Генерируй номера за деньги · 5 редкостей · цены от 1 000 ₽ до 1 000 000 000 ₽</p>
+
+  <div class="online-bar">
+    <span class="online-dot" id="onlineDot"></span>
+    <span id="onlineText">Подключение...</span>
+    <span class="room-code" id="roomCodeLabel">—</span>
+  </div>
+
+  <div class="events-banner" id="eventsBanner"></div>
+
+  <div class="stats">
+    <div class="stat"><div class="label">Баланс</div><div class="value money" id="balance">0 ₽</div></div>
+    <div class="stat"><div class="label">Продано</div><div class="value" id="sold">0</div></div>
+    <div class="stat"><div class="label">Лучший</div><div class="value" id="best" style="font-size:13px;">—</div></div>
+    <div class="stat"><div class="label">Сгенерировано</div><div class="value" id="rolled">0</div></div>
+  </div>
+
+  <div class="region-select" id="regions"></div>
+
+  <div class="generator">
+    <div class="plate-wrap">
+      <div class="plate" id="plate">
+        <div class="plate-main" id="plateMain">
+          <span class="l">А</span><span class="gap"></span>
+          <span class="d">000</span><span class="gap"></span>
+          <span class="l">АА</span>
+        </div>
+        <div class="plate-region">
+          <div class="code" id="plateCode">77</div>
+          <div class="country" id="plateCountry">RUS</div>
+          <div class="flag" id="plateFlag">🇷🇺</div>
+        </div>
+      </div>
+    </div>
+    <div class="plate-info" id="plateInfo">Выбери кейс и нажми «Сгенерировать»</div>
+    <div class="plate-value" id="plateValue"></div>
+    <div class="buttons">
+      <button class="btn btn-generate" id="btnGen">🎲 Сгенерировать</button>
+      <button class="btn btn-sell" id="btnSell" disabled>💰 Продать</button>
+    </div>
+
+    <div class="case-select">
+      <div class="case-title">🎁 Выбор редкости кейса</div>
+      <div class="case-grid" id="caseGrid"></div>
+    </div>
+  </div>
+
+  <div class="log" id="log">
+    <div class="log-item">Добро пожаловать! Выбирай регион и открывай кейсы.</div>
+  </div>
+
+  <button class="reset-btn" id="resetBtn">Сбросить прогресс</button>
+</div>
+
+<script>
+(function() {
+"use strict";
+
+// ===================== КОНСТАНТЫ =====================
+var START_BALANCE = 75000;
+var MAX_PRICE = 1000000000;
+var EXPENSIVE_THRESHOLD = 100000000;
+var ADMIN_PASSWORD = 'sims306275';
+var PIE_HOST = 'free.blr2.piesocket.com';
+var PIE_API_KEY = 'VCXCEuvhGcBDP7XhiJJUDvR1e1D3eiVjgZ9VRiaV';
+
+// ===================== ПЕРЕМЕННЫЕ =====================
+var state = {
+  balance: 0, sold: 0, best: 0, rolled: 0,
+  region: null,
+  current: null,
+  events: {},
+  adminLuckLevel: 0,
+  adminCashMult: 1,
+  selectedCase: 'common',
+  playerName: '',
+  roomCode: ''
+};
+
+var REGIONS = [
+  { id:'ru_moscow', flag:'🇷🇺', name:'Россия · Москва',  type:'ru', regionCode:'77', countryCode:'RUS', basePrice:50000 },
+  { id:'ru_spb',    flag:'🇷🇺', name:'Россия · СПб',     type:'ru', regionCode:'78', countryCode:'RUS', basePrice:45000 },
+  { id:'ru_region', flag:'🇷🇺', name:'Россия · Регион',  type:'ru', regionCode:'99', countryCode:'RUS', basePrice:35000 },
+  { id:'by',        flag:'🇧🇾', name:'Беларусь',         type:'by', regionCode:'7',  countryCode:'BY',  basePrice:40000 },
+  { id:'kz',        flag:'🇰🇿', name:'Казахстан',        type:'kz', regionCode:'01', countryCode:'KZ',  basePrice:38000 },
+  { id:'ua',        flag:'🇺🇦', name:'Украина',          type:'ua', regionCode:'AA', countryCode:'UA',  basePrice:35000 },
+  { id:'am',        flag:'🇦🇲', name:'Армения',          type:'am', regionCode:'01', countryCode:'AM',  basePrice:30000 }
+];
+state.region = REGIONS[0];
+
+var CASES = [
+  { id:'common',    name:'Обычный',    icon:'📦', price:1000,   minRarity:'common' },
+  { id:'rare',      name:'Редкий',     icon:'🎁', price:10000,  minRarity:'rare' },
+  { id:'epic',      name:'Эпический',  icon:'💜', price:75000,  minRarity:'epic' },
+  { id:'mythic',    name:'Мифический', icon:'🧡', price:150000, minRarity:'mythic' },
+  { id:'legendary', name:'Легендарный',icon:'👑', price:500000, minRarity:'legendary' }
+];
+
+var RARITY_ORDER = ['common', 'rare', 'epic', 'mythic', 'legendary'];
+var RARITY_LABELS = {
+  common: 'Обычный', rare: 'Редкий', epic: 'Эпический',
+  mythic: 'Мифический', legendary: 'Легендарный', candy: 'Конфетный 🍬'
+};
+
+var LETTERS = 'АВЕКМНОРСТУХ';
+
+// ===================== СЕТЬ (WebSocket) =====================
+var ws = null;
+var wsConnected = false;
+var reconnectTimer = null;
+var isAdminUnlocked = false;
+
+function buildWsUrl() {
+  var room = encodeURIComponent(state.roomCode || 'default');
+  return 'wss://' + PIE_HOST + '/v1?api_key=' + PIE_API_KEY + '&room=' + room;
+}
+
+function connectWS() {
+  try {
+    setOnlineStatus('connecting', 'Подключение...');
+    ws = new WebSocket(buildWsUrl());
+
+    ws.onopen = function() {
+      wsConnected = true;
+      setOnlineStatus('connected', 'Онлайн · ' + state.playerName);
+      addLog('🌐 Подключено к комнате <b>' + escapeHtml(state.roomCode) + '</b>');
+      // Запросить актуальное состояние у других
+      sendWS({ type: 'hello', from: state.playerName });
+      // Если админ — разослать своё состояние
+      if (isAdminUnlocked) {
+        broadcastAdminState();
+      }
+    };
+
+    ws.onmessage = function(e) {
+      var msg;
+      try { msg = JSON.parse(e.data); } catch (err) { return; }
+      handleWsMessage(msg);
+    };
+
+    ws.onclose = function() {
+      wsConnected = false;
+      setOnlineStatus('', 'Отключено · переподключение...');
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(connectWS, 3000);
+    };
+
+    ws.onerror = function() {
+      setOnlineStatus('', 'Ошибка соединения');
+    };
+  } catch (err) {
+    console.error('WS error:', err);
+    setOnlineStatus('', 'Ошибка: ' + err.message);
+  }
+}
+
+function sendWS(obj) {
+  if (!ws || ws.readyState !== 1) return;
+  try { ws.send(JSON.stringify(obj)); } catch (e) {}
+}
+
+function setOnlineStatus(cls, text) {
+  var dot = document.getElementById('onlineDot');
+  var txt = document.getElementById('onlineText');
+  dot.className = 'online-dot ' + cls;
+  txt.textContent = text;
+}
+
+function handleWsMessage(msg) {
+  if (!msg || !msg.type) return;
+
+  switch (msg.type) {
+
+    case 'hello':
+      // Кто-то зашёл — отвечаем своим состоянием (если мы админ)
+      if (isAdminUnlocked && msg.from !== state.playerName) {
+        broadcastAdminState();
+      }
+      break;
+
+    case 'admin-event-start':
+      state.events[msg.event] = Date.now() + msg.duration * 1000;
+      renderEventsBanner();
+      addLog('🎉 <b>' + escapeHtml(msg.from) + '</b> запустил ивент: ' + (EVENT_INFO[msg.event] ? EVENT_INFO[msg.event].label : msg.event));
+      break;
+
+    case 'admin-event-stop':
+      delete state.events[msg.event];
+      renderEventsBanner();
+      addLog('⛔ <b>' + escapeHtml(msg.from) + '</b> остановил ивент: ' + (EVENT_INFO[msg.event] ? EVENT_INFO[msg.event].label : msg.event));
+      break;
+
+    case 'admin-luck':
+      state.adminLuckLevel = msg.value;
+      renderEventsBanner();
+      document.getElementById('luckLevelSlider').value = state.adminLuckLevel;
+      document.getElementById('luckLevelVal').textContent = state.adminLuckLevel + ' / 10';
+      break;
+
+    case 'admin-cash':
+      state.adminCashMult = msg.value;
+      renderEventsBanner();
+      document.querySelectorAll('.mult-btn').forEach(function(b) {
+        b.classList.toggle('active', +b.dataset.mult === state.adminCashMult);
+      });
+      break;
+
+    case 'admin-broadcast':
+      showBroadcast(msg.text, msg.color, msg.duration);
+      addLog('📢 <b>АДМИН:</b> ' + escapeHtml(msg.text));
+      break;
+
+    case 'state-sync':
+      // Кто-то (админ) рассылает своё состояние
+      if (!isAdminUnlocked) {
+        if (msg.events) state.events = msg.events;
+        if (typeof msg.luck === 'number') state.adminLuckLevel = msg.luck;
+        if (typeof msg.cash === 'number') state.adminCashMult = msg.cash;
+        renderEventsBanner();
+        document.getElementById('luckLevelSlider').value = state.adminLuckLevel;
+        document.getElementById('luckLevelVal').textContent = state.adminLuckLevel + ' / 10';
+        document.querySelectorAll('.mult-btn').forEach(function(b) {
+          b.classList.toggle('active', +b.dataset.mult === state.adminCashMult);
+        });
+      }
+      break;
+
+    case 'chat':
+      addLog('<b>' + escapeHtml(msg.from) + ':</b> ' + escapeHtml(msg.text));
+      break;
+  }
+}
+
+function broadcastAdminState() {
+  sendWS({
+    type: 'state-sync',
+    events: state.events,
+    luck: state.adminLuckLevel,
+    cash: state.adminCashMult
+  });
+}
+
+// ===================== ХРАНИЛИЩЕ =====================
+var Store = (function() {
+  var mode = 'memory';
+  var mem = {};
+  function testLS() {
+    try {
+      var k = '__t__' + Math.random();
+      window.localStorage.setItem(k, '1');
+      window.localStorage.removeItem(k);
+      return true;
+    } catch (e) { return false; }
+  }
+  function testCookie() {
+    try {
+      document.cookie = '__t__=1; path=/';
+      var ok = document.cookie.indexOf('__t__=1') !== -1;
+      document.cookie = '__t__=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+      return ok;
+    } catch (e) { return false; }
+  }
+  if (testLS()) mode = 'local';
+  else if (testCookie()) mode = 'cookie';
+  return {
+    setItem: function(k, v) {
+      if (mode === 'local') { try { window.localStorage.setItem(k, v); return; } catch (e) {} }
+      if (mode === 'cookie') { try { document.cookie = k + '=' + encodeURIComponent(v) + '; path=/; max-age=31536000'; return; } catch (e) {} }
+      mem[k] = v;
+    },
+    getItem: function(k) {
+      if (mode === 'local') { try { return window.localStorage.getItem(k); } catch (e) {} }
+      if (mode === 'cookie') {
+        try {
+          var m = document.cookie.match(new RegExp('(?:^|; )' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]*)'));
+          return m ? decodeURIComponent(m[1]) : null;
+        } catch (e) {}
+      }
+      return mem[k] !== undefined ? mem[k] : null;
+    },
+    removeItem: function(k) {
+      if (mode === 'local') { try { window.localStorage.removeItem(k); return; } catch (e) {} }
+      if (mode === 'cookie') { try { document.cookie = k + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'; return; } catch (e) {} }
+      delete mem[k];
+    }
+  };
+})();
+
+// ===================== СОХРАНЕНИЕ ЛОКАЛЬНОЕ =====================
+function save() {
+  try {
+    Store.setItem('numerolog_save', JSON.stringify({
+      balance: state.balance, sold: state.sold, best: state.best, rolled: state.rolled,
+      regionId: state.region.id,
+      selectedCase: state.selectedCase,
+      playerName: state.playerName,
+      roomCode: state.roomCode
+    }));
+  } catch (e) {}
+}
+
+function loadLocal() {
+  try {
+    var raw = Store.getItem('numerolog_save');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) { return null; }
+}
+
+// ===================== УТИЛИТЫ =====================
+function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function pick(arr) { return arr[randInt(0, arr.length - 1)]; }
+function formatMoney(n) { return Math.round(n).toLocaleString('ru-RU') + ' ₽'; }
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, function(c) {
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+  });
+}
+
+// ===================== ИВЕНТЫ =====================
+var EVENT_INFO = {
+  candy: { label: '🍬 Конфетный', cls: 'candy' },
+  lucky: { label: '🍀 Лаки',      cls: 'lucky' },
+  mega:  { label: '🎰 Мега-дроп', cls: 'mega'  }
+};
+
+function isEventActive(name) {
+  return state.events[name] && state.events[name] > Date.now();
+}
+
+function renderEventsBanner() {
+  var banner = document.getElementById('eventsBanner');
+  banner.innerHTML = '';
+  var now = Date.now();
+  for (var k in EVENT_INFO) {
+    if (state.events[k] && state.events[k] > now) {
+      var remaining = Math.ceil((state.events[k] - now) / 1000);
+      var m = Math.floor(remaining / 60);
+      var s = String(remaining % 60).padStart(2, '0');
+      var chip = document.createElement('div');
+      chip.className = 'event-chip ' + EVENT_INFO[k].cls;
+      chip.innerHTML = EVENT_INFO[k].label + ' <span class="timer">' + m + ':' + s + '</span>';
+      banner.appendChild(chip);
+    }
+  }
+  if (state.adminCashMult > 1) {
+    var chip2 = document.createElement('div');
+    chip2.className = 'event-chip money';
+    chip2.innerHTML = '💰 x' + state.adminCashMult + ' кэш';
+    banner.appendChild(chip2);
+  }
+  if (state.adminLuckLevel > 0) {
+    var chip3 = document.createElement('div');
+    chip3.className = 'event-chip lucky';
+    chip3.innerHTML = '🍀 Удача ур.' + state.adminLuckLevel;
+    banner.appendChild(chip3);
+  }
+}
+
+// ===================== ОЦЕНКА НОМЕРА =====================
+function evaluateNumber(digits, letters) {
+  var mult = 1;
+  var tags = [];
+  var d = digits.split('').map(Number);
+  var allSame = d.every(function(x) { return x === d[0]; });
+  var isSequence = d.every(function(x, i) { return i === 0 || x === d[i-1] + 1; });
+  var isDescending = d.every(function(x, i) { return i === 0 || x === d[i-1] - 1; });
+  var isPalindrome = digits === digits.split('').reverse().join('');
+  var hasTriple = /(\d)\1\1/.test(digits);
+  var hasPair = /(\d)\1/.test(digits);
+  var sum = d.reduce(function(a, b) { return a + b; }, 0);
+  var luckySum = (sum === 7 || sum === 21 || sum === 13);
+  var allLucky = d.every(function(x) { return [7,8,9].indexOf(x) !== -1; });
+  var startsWith7 = d[0] === 7;
+  var endsWith7 = d[3] === 7;
+  var lettersSame = letters[0] === letters[1] && letters[1] === letters[2];
+  var lettersPair = letters[0] === letters[1] || letters[1] === letters[2];
+
+  if (allSame && d[0] === 7) { mult *= 500; tags.push('👑 7777'); }
+  else if (allSame && d[0] === 0) { mult *= 250; tags.push('💠 0000'); }
+  else if (allSame) { mult *= 180; tags.push('💎 Все цифры одинаковые'); }
+  else if (isSequence && d[0] === 1) { mult *= 150; tags.push('🔥 1234'); }
+  else if (isSequence) { mult *= 100; tags.push('📈 Последовательность'); }
+  else if (isDescending) { mult *= 90; tags.push('📉 Обратный порядок'); }
+  else if (hasTriple) { mult *= 60; tags.push('🎯 Триплет'); }
+  else if (isPalindrome) { mult *= 50; tags.push('🔄 Палиндром'); }
+  else if (allLucky) { mult *= 35; tags.push('🍀 Только 7-8-9'); }
+  else if (hasPair && startsWith7 && endsWith7) { mult *= 30; tags.push('✨ 7xx7'); }
+  else if (digits === '0001' || digits === '0007') { mult *= 25; tags.push('🥇 Особый'); }
+  else if (digits === '1000' || digits === '7000') { mult *= 22; tags.push('💯 Круглое'); }
+  else if (hasPair) { mult *= 10; tags.push('👥 Пара цифр'); }
+  else if (luckySum) { mult *= 6; tags.push('🔮 Счастливая сумма'); }
+  else if (startsWith7 || endsWith7) { mult *= 4; tags.push('7️⃣ Семёрка'); }
+
+  if (lettersSame) { mult *= 7; tags.push('🔤 Одинаковые буквы'); }
+  else if (lettersPair) { mult *= 3; tags.push('🔡 Пара букв'); }
+
+  var rarity;
+  if (mult >= 150) rarity = 'legendary';
+  else if (mult >= 50) rarity = 'mythic';
+  else if (mult >= 18) rarity = 'epic';
+  else if (mult >= 6) rarity = 'rare';
+  else rarity = 'common';
+
+  var tagStr = tags.length ? tags.join(' · ') : 'Обычный номер';
+  return { mult: mult, tags: tagStr, rarity: rarity };
+}
+
+function bumpToMinRarity(rawEval, minRarity) {
+  var minIdx = RARITY_ORDER.indexOf(minRarity);
+  if (minIdx < 0) return rawEval;
+  var idx = RARITY_ORDER.indexOf(rawEval.rarity);
+  if (idx >= minIdx) return rawEval;
+
+  var mult = rawEval.mult;
+  var tags = rawEval.tags;
+  var rarity = minRarity;
+  if (rarity === 'rare') {
+    if (mult < 6) mult = randInt(6, 17);
+    tags = tags === 'Обычный номер' ? 'Редкий номер' : tags;
+  } else if (rarity === 'epic') {
+    if (mult < 18) mult = randInt(18, 49);
+    tags = tags === 'Обычный номер' ? 'Эпический номер' : tags;
+  } else if (rarity === 'mythic') {
+    if (mult < 50) mult = randInt(50, 149);
+    tags = tags === 'Обычный номер' ? 'Мифический номер' : tags;
+  } else if (rarity === 'legendary') {
+    if (mult < 150) mult = randInt(150, 500);
+    tags = tags === 'Обычный номер' ? 'Легендарный номер' : tags;
+  }
+  return { mult: mult, tags: tags, rarity: rarity };
+}
+
+function applyAdminLuck(rawEval) {
+  var lvl = state.adminLuckLevel;
+  if (lvl <= 0) return rawEval;
+  var chance = lvl * 0.02;
+  if (Math.random() < chance) {
+    var idx = RARITY_ORDER.indexOf(rawEval.rarity);
+    var upSteps = Math.random() < 0.2 ? 2 : 1;
+    idx = Math.min(RARITY_ORDER.length - 1, idx + upSteps);
+    var newRarity = RARITY_ORDER[idx];
+    var mult = rawEval.mult;
+    if (newRarity === 'rare' && mult < 6) mult = randInt(6, 17);
+    if (newRarity === 'epic' && mult < 18) mult = randInt(18, 49);
+    if (newRarity === 'mythic' && mult < 50) mult = randInt(50, 149);
+    if (newRarity === 'legendary' && mult < 150) mult = randInt(150, 500);
+    return { mult: mult, tags: rawEval.tags, rarity: newRarity };
+  }
+  return rawEval;
+}
+
+function applyLuckyEvent(rawEval) {
+  if (!isEventActive('lucky')) return rawEval;
+  if (Math.random() < 0.20) {
+    var idx = RARITY_ORDER.indexOf(rawEval.rarity);
+    idx = Math.min(RARITY_ORDER.length - 1, idx + 1);
+    var newRarity = RARITY_ORDER[idx];
+    var mult = rawEval.mult;
+    if (newRarity === 'rare' && mult < 6) mult = randInt(6, 17);
+    if (newRarity === 'epic' && mult < 18) mult = randInt(18, 49);
+    if (newRarity === 'mythic' && mult < 50) mult = randInt(50, 149);
+    if (newRarity === 'legendary' && mult < 150) mult = randInt(150, 500);
+    return { mult: mult, tags: rawEval.tags, rarity: newRarity };
+  }
+  return rawEval;
+}
+
+function computePrice(mult, region, isCandy) {
+  var base = region.basePrice;
+  var price = base * mult;
+  if (mult >= 150) price *= 30;
+  else if (mult >= 50) price *= 8;
+  else if (mult >= 18) price *= 3;
+  if (isCandy) price *= 5;
+  price *= state.adminCashMult;
+  return Math.max(1000, Math.min(MAX_PRICE, Math.round(price)));
+}
+
+// ===================== ОТКРЫТИЕ КЕЙСА =====================
+function openCase(caseId) {
+  var kase = null;
+  for (var i = 0; i < CASES.length; i++) if (CASES[i].id === caseId) kase = CASES[i];
+  if (!kase) return;
+
+  if (state.balance < kase.price) {
+    addLog('❌ Недостаточно денег для кейса <b>' + kase.name + '</b> (нужно ' + formatMoney(kase.price) + ')');
+    return;
+  }
+  state.balance -= kase.price;
+
+  var region = state.region;
+  var digits = String(randInt(1, 9999)).padStart(4, '0');
+  var letters;
+  if (region.type === 'ru') {
+    letters = pick(LETTERS.split('')) + pick(LETTERS.split('')) + pick(LETTERS.split(''));
+  } else {
+    letters = String.fromCharCode(65 + randInt(0, 25)) + String.fromCharCode(65 + randInt(0, 25));
+  }
+
+  var evalResult = evaluateNumber(digits, letters);
+
+  if (isEventActive('mega')) {
+    for (var m = 0; m < 2; m++) {
+      var d2 = String(randInt(1, 9999)).padStart(4, '0');
+      var e2 = evaluateNumber(d2, letters);
+      if (e2.mult > evalResult.mult) evalResult = e2;
+    }
+  }
+
+  evalResult = applyAdminLuck(evalResult);
+  evalResult = applyLuckyEvent(evalResult);
+  evalResult = bumpToMinRarity(evalResult, kase.minRarity);
+
+  var isCandy = false;
+  if (isEventActive('candy') && Math.random() < 0.03) isCandy = true;
+
+  var value = computePrice(evalResult.mult, region, isCandy);
+  var finalRarity = evalResult.rarity;
+  var finalTags = evalResult.tags;
+  if (isCandy) { finalRarity = 'candy'; finalTags = '🍬 Конфетный номер · ×5 к цене'; }
+
+  state.current = {
+    digits: digits, letters: letters,
+    tags: finalTags, rarity: finalRarity, mult: evalResult.mult,
+    value: value, region: region, isCandy: isCandy
+  };
+  state.rolled++;
+
+  renderCurrent();
+  setSellEnabled(true);
+  save();
+  updateUI();
+}
+
+// ===================== ОТРИСОВКА =====================
+function renderCurrent() {
+  var c = state.current;
+  var r = c.region;
+  var plateEl = document.getElementById('plate');
+  var mainEl = document.getElementById('plateMain');
+  var codeEl = document.getElementById('plateCode');
+  var countryEl = document.getElementById('plateCountry');
+  var flagEl = document.getElementById('plateFlag');
+  var infoEl = document.getElementById('plateInfo');
+  var valueEl = document.getElementById('plateValue');
+
+  if (r.type === 'ru') {
+    mainEl.innerHTML = '<span class="l">' + c.letters[0] + '</span><span class="gap"></span><span class="d">' + c.digits + '</span><span class="gap"></span><span class="l">' + c.letters.slice(1) + '</span>';
+    countryEl.textContent = 'RUS'; codeEl.textContent = r.regionCode; flagEl.textContent = '🇷🇺';
+  } else if (r.type === 'by') {
+    mainEl.innerHTML = '<span class="d">' + c.digits + '</span><span class="gap"></span><span class="l">' + c.letters + '</span>';
+    countryEl.textContent = 'BY'; codeEl.textContent = r.regionCode; flagEl.textContent = '🇧🇾';
+  } else if (r.type === 'kz') {
+    mainEl.innerHTML = '<span class="d">' + c.digits + '</span><span class="gap"></span><span class="l">' + c.letters + '</span>';
+    countryEl.textContent = 'KZ'; codeEl.textContent = r.regionCode; flagEl.textContent = '🇰🇿';
+  } else if (r.type === 'ua') {
+    mainEl.innerHTML = '<span class="l">' + c.letters + '</span><span class="gap"></span><span class="d">' + c.digits + '</span>';
+    countryEl.textContent = 'UA'; codeEl.textContent = r.regionCode; flagEl.textContent = '🇺🇦';
+  } else {
+    mainEl.innerHTML = '<span class="d">' + c.digits + '</span><span class="gap"></span><span class="l">' + c.letters + '</span>';
+    countryEl.textContent = r.countryCode; codeEl.textContent = r.regionCode; flagEl.textContent = r.flag;
+  }
+
+  var plateClass = 'plate ' + (c.isCandy ? 'candy' : c.rarity);
+  if (c.value >= EXPENSIVE_THRESHOLD) plateClass += ' expensive';
+  plateEl.className = plateClass;
+  infoEl.textContent = c.tags;
+
+  var extra = '';
+  if (state.adminCashMult > 1) extra += ' <span style="color:#f5d76e">💰 ×' + state.adminCashMult + '</span>';
+  if (c.value >= EXPENSIVE_THRESHOLD) extra += ' <span style="color:#ffd700;font-weight:900">⚠️ ДОРОГОЙ</span>';
+
+  valueEl.className = 'plate-value' + (c.value >= EXPENSIVE_THRESHOLD ? ' expensive-value' : '');
+  valueEl.innerHTML = 'Оценка: <b style="color:' + (c.value >= EXPENSIVE_THRESHOLD ? '#ffd700' : '#6ee7a8') + '">' + formatMoney(c.value) + '</b> ' +
+    '<span class="mult">(x' + c.mult.toFixed(1) + ')</span> ' +
+    '<span class="rarity-tag ' + c.rarity + '">' + RARITY_LABELS[c.rarity] + '</span>' + extra;
+}
+
+function formatPlate(c) {
+  var r = c.region;
+  if (r.type === 'ru') return c.letters[0] + ' ' + c.digits + ' ' + c.letters.slice(1) + ' ' + r.regionCode;
+  if (r.type === 'by') return c.digits + ' ' + c.letters + ' ' + r.regionCode;
+  if (r.type === 'kz') return c.digits + ' ' + c.letters + ' ' + r.regionCode;
+  if (r.type === 'ua') return c.letters + ' ' + c.digits + ' ' + r.regionCode;
+  return c.digits + ' ' + c.letters + ' ' + r.regionCode;
+}
+
+function sellNumber() {
+  if (!state.current) return;
+  var c = state.current;
+  state.balance += c.value;
+  state.sold++;
+  if (c.value > state.best) state.best = c.value;
+
+  var cls = c.isCandy ? 'pink' : ({ common:'', rare:'blue', epic:'purple', mythic:'orange', legendary:'gold' })[c.rarity];
+  addLog('Продано: <b>' + c.region.flag + ' ' + formatPlate(c) + '</b> за <span class="' + cls + '">' + formatMoney(c.value) + '</span>' + (c.isCandy ? ' 🍬' : ''));
+
+  state.current = null;
+  document.getElementById('plateMain').innerHTML = '<span class="l">А</span><span class="gap"></span><span class="d">000</span><span class="gap"></span><span class="l">АА</span>';
+  document.getElementById('plate').className = 'plate';
+  document.getElementById('plateInfo').textContent = 'Выбери кейс и нажми «Сгенерировать»';
+  document.getElementById('plateValue').className = 'plate-value';
+  document.getElementById('plateValue').innerHTML = '';
+  setSellEnabled(false);
+  save();
+  updateUI();
+}
+
+// ===================== UI =====================
+function updateUI() {
+  document.getElementById('balance').textContent = formatMoney(state.balance);
+  document.getElementById('sold').textContent = state.sold;
+  document.getElementById('best').textContent = state.best ? formatMoney(state.best) : '—';
+  document.getElementById('rolled').textContent = state.rolled;
+
+  var kase = null;
+  for (var i = 0; i < CASES.length; i++) if (CASES[i].id === state.selectedCase) kase = CASES[i];
+  if (!kase) kase = CASES[0];
+
+  var btnGen = document.getElementById('btnGen');
+  if (state.balance < kase.price) {
+    btnGen.disabled = true;
+    btnGen.textContent = '🎲 Нужно ' + formatMoney(kase.price);
+  } else {
+    btnGen.disabled = false;
+    btnGen.textContent = '🎲 Сгенерировать (' + formatMoney(kase.price) + ')';
+  }
+
+  document.querySelectorAll('.case-item').forEach(function(el) {
+    var id = el.dataset.caseId;
+    var c = null;
+    for (var j = 0; j < CASES.length; j++) if (CASES[j].id === id) c = CASES[j];
+    if (!c) return;
+    el.classList.toggle('active', id === state.selectedCase);
+    if (state.balance < c.price) el.classList.add('disabled');
+    else el.classList.remove('disabled');
+  });
+}
+
+function setSellEnabled(enabled) {
+  document.getElementById('btnSell').disabled = !enabled;
+}
+
+function addLog(text) {
+  var log = document.getElementById('log');
+  var div = document.createElement('div');
+  div.className = 'log-item';
+  div.innerHTML = text;
+  log.prepend(div);
+  while (log.children.length > 30) log.removeChild(log.lastChild);
+}
+
+function renderRegions() {
+  var container = document.getElementById('regions');
+  container.innerHTML = '';
+  REGIONS.forEach(function(r) {
+    var btn = document.createElement('button');
+    btn.className = 'region-btn' + (r.id === state.region.id ? ' active' : '');
+    btn.innerHTML = '<span class="flag">' + r.flag + '</span>' + r.name;
+    btn.onclick = function() {
+      state.region = r;
+      state.current = null;
+      document.getElementById('plateMain').innerHTML = '<span class="l">А</span><span class="gap"></span><span class="d">000</span><span class="gap"></span><span class="l">АА</span>';
+      document.getElementById('plate').className = 'plate';
+      document.getElementById('plateInfo').textContent = 'Выбери кейс и нажми «Сгенерировать»';
+      document.getElementById('plateValue').className = 'plate-value';
+      document.getElementById('plateValue').innerHTML = '';
+      setSellEnabled(false);
+      renderRegions();
+      addLog('Регион изменён: <b>' + r.flag + ' ' + r.name + '</b>');
+      save();
+    };
+    container.appendChild(btn);
+  });
+}
+
+function renderCases() {
+  var grid = document.getElementById('caseGrid');
+  grid.innerHTML = '';
+  CASES.forEach(function(c) {
+    var el = document.createElement('div');
+    el.className = 'case-item c-' + c.minRarity;
+    if (state.balance < c.price) el.classList.add('disabled');
+    if (state.selectedCase === c.id) el.classList.add('active');
+    el.dataset.caseId = c.id;
+    var locked = state.balance < c.price ? '<div class="case-locked">не хватает</div>' : '';
+    el.innerHTML = '<div class="case-icon">' + c.icon + '</div>' +
+                   '<div class="case-name">' + c.name + '</div>' +
+                   '<div class="case-price">' + formatMoney(c.price) + '</div>' + locked;
+    el.onclick = function() {
+      if (el.classList.contains('disabled')) return;
+      state.selectedCase = c.id;
+      save();
+      renderCases();
+      updateUI();
+    };
+    grid.appendChild(el);
+  });
+}
+
+// ===================== МОДАЛКА ПОДТВЕРЖДЕНИЯ =====================
+var confirmOverlay = document.getElementById('confirmOverlay');
+var confirmCallback = null;
+
+function showConfirm(callback) {
+  var c = state.current;
+  if (!c) { callback(); return; }
+  document.getElementById('confirmPlate').textContent = formatPlate(c);
+  document.getElementById('confirmValue').textContent = formatMoney(c.value);
+  confirmCallback = callback;
+  confirmOverlay.classList.add('show');
+}
+
+document.getElementById('confirmCancel').onclick = function() {
+  confirmOverlay.classList.remove('show');
+  confirmCallback = null;
+  addLog('⚠️ Прокрутка отменена. Продай дорогой номер!');
+};
+
+document.getElementById('confirmGo').onclick = function() {
+  confirmOverlay.classList.remove('show');
+  var cb = confirmCallback;
+  confirmCallback = null;
+  if (cb) cb();
+};
+
+function handleGenerateClick() {
+  if (state.current && state.current.value >= EXPENSIVE_THRESHOLD) {
+    showConfirm(function() {
+      state.current = null;
+      openCase(state.selectedCase);
+    });
+  } else {
+    state.current = null;
+    openCase(state.selectedCase);
+  }
+}
+
+// ===================== АДМИН-ПАРОЛЬ =====================
+var adminPassOverlay = document.getElementById('adminPassOverlay');
+var adminPassInput = document.getElementById('adminPassInput');
+var adminPassError = document.getElementById('adminPassError');
+var adminOverlay = document.getElementById('adminOverlay');
+
+function requestAdminPassword() {
+  if (isAdminUnlocked) {
+    adminOverlay.classList.add('show');
+    updateAdminUI();
+    return;
+  }
+  adminPassInput.value = '';
+  adminPassError.textContent = '';
+  adminPassOverlay.classList.add('show');
+  setTimeout(function() { adminPassInput.focus(); }, 100);
+}
+
+document.getElementById('adminPassCancel').onclick = function() {
+  adminPassOverlay.classList.remove('show');
+  adminPassInput.value = '';
+  adminPassError.textContent = '';
+};
+
+document.getElementById('adminPassOk').onclick = function() {
+  var val = adminPassInput.value;
+  if (val === ADMIN_PASSWORD) {
+    isAdminUnlocked = true;
+    adminPassOverlay.classList.remove('show');
+    adminOverlay.classList.add('show');
+    updateAdminUI();
+    addLog('🔓 Админ-панель разблокирована');
+    broadcastAdminState();
+  } else {
+    adminPassError.textContent = 'Неверный пароль';
+    adminPassInput.value = '';
+    adminPassInput.focus();
+  }
+};
+
+adminPassInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') document.getElementById('adminPassOk').click();
+});
+
+// ===================== ОТКРЫТИЕ АДМИН-ПАНЕЛИ =====================
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a' || e.code === 'KeyA')) {
+    e.preventDefault();
+    if (adminOverlay.classList.contains('show')) {
+      adminOverlay.classList.remove('show');
+    } else {
+      requestAdminPassword();
+    }
+  }
+});
+
+var titleTaps = 0, titleTimer = null;
+document.getElementById('gameTitle').addEventListener('click', function() {
+  titleTaps++;
+  clearTimeout(titleTimer);
+  titleTimer = setTimeout(function() { titleTaps = 0; }, 800);
+  if (titleTaps >= 5) { titleTaps = 0; requestAdminPassword(); }
+});
+
+document.getElementById('adminClose').onclick = function() { adminOverlay.classList.remove('show'); };
+adminOverlay.addEventListener('click', function(e) { if (e.target === adminOverlay) adminOverlay.classList.remove('show'); });
+
+// ===================== АДМИН: УРОВЕНЬ УДАЧИ =====================
+var luckSlider = document.getElementById('luckLevelSlider');
+var luckValEl = document.getElementById('luckLevelVal');
+
+luckSlider.addEventListener('input', function() {
+  if (!isAdminUnlocked) return;
+  state.adminLuckLevel = +luckSlider.value;
+  luckValEl.textContent = state.adminLuckLevel + ' / 10';
+  renderEventsBanner();
+  sendWS({ type: 'admin-luck', value: state.adminLuckLevel, from: state.playerName });
+});
+
+// ===================== АДМИН: МНОЖИТЕЛЬ =====================
+document.querySelectorAll('.mult-btn').forEach(function(btn) {
+  btn.onclick = function() {
+    if (!isAdminUnlocked) return;
+    state.adminCashMult = +btn.dataset.mult;
+    updateAdminUI();
+    renderEventsBanner();
+    sendWS({ type: 'admin-cash', value: state.adminCashMult, from: state.playerName });
+    addLog('💰 Множитель кэша: <b>x' + state.adminCashMult + '</b>');
+  };
+});
+
+function updateAdminUI() {
+  luckSlider.value = state.adminLuckLevel;
+  luckValEl.textContent = state.adminLuckLevel + ' / 10';
+  document.querySelectorAll('.mult-btn').forEach(function(btn) {
+    btn.classList.toggle('active', +btn.dataset.mult === state.adminCashMult);
+  });
+}
+
+// ===================== БАННЕР-СООБЩЕНИЕ =====================
+var broadcastEl = document.getElementById('adminBroadcast');
+var broadcastTextEl = document.getElementById('adminBroadcastText');
+var broadcastHideTimer = null;
+
+function showBroadcast(text, color, durationSec) {
+  if (!text || !text.trim()) return;
+  broadcastTextEl.textContent = text.trim();
+  broadcastEl.className = 'admin-broadcast color-' + (color || 'purple');
+  void broadcastEl.offsetWidth;
+  broadcastEl.classList.add('show');
+  if (broadcastHideTimer) clearTimeout(broadcastHideTimer);
+  if (durationSec > 0) {
+    broadcastHideTimer = setTimeout(function() {
+      broadcastEl.classList.remove('show');
+    }, durationSec * 1000);
+  }
+}
+
+document.getElementById('broadcastBtn').onclick = function() {
+  if (!isAdminUnlocked) return;
+  var text = document.getElementById('broadcastText').value;
+  var color = document.getElementById('broadcastColor').value;
+  var dur = +document.getElementById('broadcastDur').value;
+  if (!text.trim()) return;
+  showBroadcast(text, color, dur);
+  addLog('📢 <b>АДМИН:</b> ' + escapeHtml(text));
+  sendWS({ type: 'admin-broadcast', text: text, color: color, duration: dur, from: state.playerName });
+};
+
+broadcastEl.addEventListener('click', function() {
+  if (broadcastHideTimer) clearTimeout(broadcastHideTimer);
+  broadcastEl.classList.remove('show');
+});
+
+// ===================== АДМИН: ИВЕНТЫ =====================
+document.querySelectorAll('.admin-btn.start').forEach(function(btn) {
+  btn.onclick = function() {
+    if (!isAdminUnlocked) return;
+    var name = btn.dataset.event;
+    var durSel = document.getElementById(name + 'Dur');
+    var dur = +durSel.value;
+    state.events[name] = Date.now() + dur * 1000;
+    renderEventsBanner();
+    addLog('🎉 Запущен ивент: <b>' + EVENT_INFO[name].label + '</b> на ' + dur + ' сек.');
+    sendWS({ type: 'admin-event-start', event: name, duration: dur, from: state.playerName });
+  };
+});
+document.querySelectorAll('.admin-btn.stop').forEach(function(btn) {
+  btn.onclick = function() {
+    if (!isAdminUnlocked) return;
+    var name = btn.dataset.event;
+    delete state.events[name];
+    renderEventsBanner();
+    addLog('⛔ Ивент <b>' + EVENT_INFO[name].label + '</b> остановлен.');
+    sendWS({ type: 'admin-event-stop', event: name, from: state.playerName });
+  };
+});
+
+// ===================== АДМИН: ВЫДАТЬ ДЕНЬГИ =====================
+document.getElementById('giveBtn').onclick = function() {
+  if (!isAdminUnlocked) return;
+  var amount = Math.max(0, Math.floor(+document.getElementById('giveAmount').value || 0));
+  if (!amount) return;
+  state.balance += amount;
+  addLog('🛠 Админ выдал <b>' + formatMoney(amount) + '</b>');
+  save();
+  updateUI();
+};
+
+document.getElementById('clearLogBtn').onclick = function() {
+  if (!isAdminUnlocked) return;
+  document.getElementById('log').innerHTML = '';
+  addLog('🧹 Лог очищен');
+};
+
+// ===================== КНОПКИ =====================
+document.getElementById('btnGen').onclick = handleGenerateClick;
+document.getElementById('btnSell').onclick = sellNumber;
+
+document.getElementById('resetBtn').onclick = function() {
+  if (!confirm('Точно сбросить весь прогресс? Это действие необратимо.')) return;
+  state.balance = START_BALANCE;
+  state.sold = 0; state.best = 0; state.rolled = 0;
+  state.region = REGIONS[0];
+  state.current = null;
+  state.selectedCase = 'common';
+  Store.removeItem('numerolog_save');
+  document.getElementById('plateMain').innerHTML = '<span class="l">А</span><span class="gap"></span><span class="d">000</span><span class="gap"></span><span class="l">АА</span>';
+  document.getElementById('plate').className = 'plate';
+  document.getElementById('plateInfo').textContent = 'Выбери кейс и нажми «Сгенерировать»';
+  document.getElementById('plateValue').className = 'plate-value';
+  document.getElementById('plateValue').innerHTML = '';
+  document.getElementById('log').innerHTML = '<div class="log-item">Прогресс сброшен. Выдан стартовый капитал 75 000 ₽!</div>';
+  setSellEnabled(false);
+  renderRegions();
+  renderCases();
+  renderEventsBanner();
+  updateAdminUI();
+  updateUI();
+  save();
+};
+
+// ===================== ТИК ТАЙМЕРОВ =====================
+setInterval(function() {
+  var now = Date.now();
+  var changed = false;
+  for (var k in state.events) {
+    if (state.events[k] <= now) { delete state.events[k]; changed = true; }
+  }
+  renderEventsBanner();
+}, 1000);
+
+// ===================== ЭКРАН ВХОДА =====================
+var welcomeOverlay = document.getElementById('welcomeOverlay');
+var gameScreen = document.getElementById('gameScreen');
+
+// Восстанавливаем имя и комнату из сохранения
+var savedLocal = loadLocal();
+if (savedLocal) {
+  if (savedLocal.playerName) document.getElementById('playerName').value = savedLocal.playerName;
+  if (savedLocal.roomCode) document.getElementById('roomCode').value = savedLocal.roomCode;
+}
+
+document.getElementById('welcomeStart').onclick = function() {
+  var name = document.getElementById('playerName').value.trim();
+  var room = document.getElementById('roomCode').value.trim();
+
+  if (name.length < 2) { alert('Введите имя (минимум 2 символа)'); return; }
+  if (room.length < 3) { alert('Введите код комнаты (минимум 3 символа)'); return; }
+
+  state.playerName = name;
+  state.roomCode = room;
+
+  // Загружаем локальный прогресс
+  var local = loadLocal();
+  if (local) {
+    state.balance = local.balance || START_BALANCE;
+    state.sold = local.sold || 0;
+    state.best = local.best || 0;
+    state.rolled = local.rolled || 0;
+    state.selectedCase = local.selectedCase || 'common';
+    for (var i = 0; i < REGIONS.length; i++) {
+      if (REGIONS[i].id === local.regionId) state.region = REGIONS[i];
+    }
+  } else {
+    state.balance = START_BALANCE;
+  }
+
+  welcomeOverlay.classList.add('hide');
+  gameScreen.style.display = 'block';
+  document.getElementById('roomCodeLabel').textContent = room;
+
+  renderRegions();
+  renderCases();
+  renderEventsBanner();
+  updateAdminUI();
+  updateUI();
+
+  if (local) {
+    addLog('💾 Прогресс восстановлен: ' + formatMoney(state.balance));
+  } else {
+    addLog('🎁 Выдан стартовый капитал ' + formatMoney(START_BALANCE));
+  }
+
+  // Подключаемся к комнате
+  connectWS();
+  save();
+};
+
+// ===================== СТАРТ =====================
+// Заглушаем ошибку localStorage, если она где-то проскочит
+window.addEventListener('error', function(e) {
+  var es = document.getElementById('errorScreen');
+  var ei = document.getElementById('errorInfo');
+  if (es && ei) {
+    ei.textContent = (e.message || 'Неизвестная ошибка') + '\n' + (e.filename || '') + ':' + (e.lineno || '');
+    es.classList.add('show');
+  }
+});
+
+})();
+</script>
+</body>
+</html>
